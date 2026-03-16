@@ -8,9 +8,26 @@
   <link rel="stylesheet" href="css/display.css">
 </head>
 <body>
-  <div id="app">
-    <div class="loading" style="grid-column:1/-1;display:flex;align-items:center;justify-content:center;font-size:2rem;color:var(--text-muted);">
-      Loading...
+  <div id="page">
+    <header id="header-bar">
+      <div class="hb-clock">
+        <div id="hb-time">--:--</div>
+        <div id="hb-date">—</div>
+      </div>
+      <div class="hb-weather" id="hb-weather">
+        <span class="wx-icon" id="wx-icon">🌡️</span>
+        <div class="wx-details">
+          <div class="wx-temp" id="wx-temp">—°</div>
+          <div class="wx-desc" id="wx-desc">Loading weather…</div>
+          <div class="wx-hilo" id="wx-hilo"></div>
+        </div>
+      </div>
+    </header>
+
+    <div id="app">
+      <div class="loading" style="grid-column:1/-1;display:flex;align-items:center;justify-content:center;font-size:2rem;color:var(--text-muted);">
+        Loading...
+      </div>
     </div>
   </div>
 
@@ -23,6 +40,55 @@
       return `${DAYS[dt.getDay()]}, ${dt.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`;
     }
 
+    function escHtml(str) {
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // ── Clock ──
+    function tickClock() {
+      const now = new Date();
+      document.getElementById('hb-time').textContent =
+        now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    }
+    tickClock();
+    setInterval(tickClock, 1000);
+
+    // ── Weather ──
+    function weatherEmoji(code) {
+      const c = parseInt(code);
+      if (c === 113) return '☀️';
+      if (c === 116) return '⛅';
+      if (c === 119 || c === 122) return '☁️';
+      if (c === 143 || c === 248 || c === 260) return '🌫️';
+      if ([200, 386, 389, 392, 395].includes(c)) return '⛈️';
+      if ([227, 230, 323, 326, 329, 332, 335, 338, 368, 371].includes(c)) return '❄️';
+      if ([179, 182, 185, 311, 314, 317, 320, 350, 362, 365, 374, 377].includes(c)) return '🌨️';
+      if ([263, 266, 293, 296, 353].includes(c)) return '🌦️';
+      return '🌧️';
+    }
+
+    async function fetchWeather() {
+      try {
+        const res = await fetch('https://wttr.in/?format=j1');
+        if (!res.ok) throw new Error('weather fetch failed');
+        const data = await res.json();
+        const cur = data.current_condition[0];
+        const today = data.weather[0];
+
+        document.getElementById('wx-icon').textContent = weatherEmoji(cur.weatherCode);
+        document.getElementById('wx-temp').textContent = `${cur.temp_F}°F`;
+        document.getElementById('wx-desc').textContent = cur.weatherDesc[0].value;
+        document.getElementById('wx-hilo').textContent =
+          `↑${today.maxtempF}° ↓${today.mintempF}°  💧${cur.humidity}%`;
+      } catch (e) {
+        document.getElementById('wx-desc').textContent = 'Weather unavailable';
+        console.warn('Weather error:', e);
+      }
+    }
+    fetchWeather();
+    setInterval(fetchWeather, 10 * 60 * 1000); // refresh every 10 min
+
+    // ── Chore chart ──
     function renderChild(child) {
       const pct = child.total > 0 ? Math.round((child.completed / child.total) * 100) : 0;
       const allDone = child.total > 0 && child.completed === child.total;
@@ -54,12 +120,7 @@
           </div>
           ${allDone ? `<div class="all-done"><span class="trophy">🏆</span><p>Amazing job!</p></div>` : ''}
           <div class="task-list">${tasksHtml}</div>
-          <div id="clock"></div>
         </div>`;
-    }
-
-    function escHtml(str) {
-      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 
     async function refresh() {
@@ -67,6 +128,7 @@
         const res = await fetch('/api/summary?date=today');
         if (!res.ok) throw new Error(res.statusText);
         const data = await res.json();
+        document.getElementById('hb-date').textContent = formatDate(data.date);
         const app = document.getElementById('app');
         if (data.children.length === 0) {
           app.innerHTML = `<div style="grid-column:1/-1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem;color:var(--text-muted);">
@@ -77,10 +139,6 @@
           return;
         }
         app.innerHTML = data.children.map(renderChild).join('');
-        // Update clocks
-        document.querySelectorAll('#clock').forEach(el => {
-          el.textContent = formatDate(data.date);
-        });
       } catch (e) {
         console.error('Refresh error:', e);
       }
@@ -88,18 +146,6 @@
 
     refresh();
     setInterval(refresh, 30_000);
-
-    // Live clock ticks every minute
-    function tickClock() {
-      const now = new Date();
-      const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-      document.querySelectorAll('#clock').forEach(el => {
-        const dateStr = el.textContent.split(' · ')[0];
-        el.textContent = `${dateStr} · ${timeStr}`;
-      });
-    }
-    setInterval(tickClock, 10_000);
-    setTimeout(tickClock, 500);
   </script>
 </body>
 </html>
