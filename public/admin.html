@@ -98,6 +98,9 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 'today') renderToday();
+    if (btn.dataset.tab === 'manage') renderManage();
+    if (btn.dataset.tab === 'children') renderChildren();
   });
 });
 
