@@ -108,7 +108,7 @@ body {
   cursor: pointer;
   transition: background 0.15s;
   border: 2px solid transparent;
-  min-height: 60px;
+  min-height: 52px;
 }
 .task-row:active { transform: scale(0.98); }
 .task-row.done {

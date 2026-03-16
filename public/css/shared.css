@@ -1,5 +1,12 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+html {
+  /* Scale base font with viewport: 13px @ 320px → 16px @ 420px+ */
+  font-size: clamp(13px, 3.8vw, 16px);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 :root {
   --bg: #0f0f1a;
   --surface: #1a1a2e;
