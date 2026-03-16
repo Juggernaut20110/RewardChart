@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Chore Chart — Admin</title>
+  <link rel="stylesheet" href="css/shared.css">
+  <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+
+<div class="topbar">
+  <h1>⭐ Chore Chart</h1>
+  <div class="topbar-actions">
+    <a href="display.html" style="color:var(--text-muted);text-decoration:none;font-size:0.85rem;padding:0.4rem 0.75rem;background:rgba(255,255,255,0.06);border-radius:var(--radius-sm);">📺 Display</a>
+    <a href="history.html" style="color:var(--text-muted);text-decoration:none;font-size:0.85rem;padding:0.4rem 0.75rem;background:rgba(255,255,255,0.06);border-radius:var(--radius-sm);">📅 History</a>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab-btn active" data-tab="today">Today</button>
+  <button class="tab-btn" data-tab="manage">Tasks</button>
+  <button class="tab-btn" data-tab="children">Kids</button>
+</div>
+
+<!-- TODAY PANEL -->
+<div class="panel active" id="tab-today">
+  <div class="date-nav">
+    <button id="prevDay">◀</button>
+    <span class="date-label" id="dateLabel">—</span>
+    <button id="nextDay" id="nextDay">▶</button>
+  </div>
+  <div id="todayContent"></div>
+</div>
+
+<!-- MANAGE TASKS PANEL -->
+<div class="panel" id="tab-manage">
+  <div id="manageContent"></div>
+</div>
+
+<!-- CHILDREN PANEL -->
+<div class="panel" id="tab-children">
+  <div id="childrenContent"></div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const DAY_FULL = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+let currentDate = todayStr();
+let allChildren = [];
+let allTasks = [];
+
+function todayStr() {
+  return new Date().toLocaleDateString('en-CA');
+}
+function offsetDate(dateStr, days) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  dt.setDate(dt.getDate() + days);
+  return dt.toLocaleDateString('en-CA');
+}
+function formatDateLabel(dateStr) {
+  const today = todayStr();
+  const yesterday = offsetDate(today, -1);
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  if (dateStr === today) return 'Today';
+  if (dateStr === yesterday) return 'Yesterday';
+  return `${DAY_FULL[dt.getDay()]}, ${dt.toLocaleDateString('en-US',{month:'short',day:'numeric'})}`;
+}
+function escHtml(str) {
+  return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function showToast(msg, isError = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show' + (isError ? ' error' : '');
+  setTimeout(() => t.className = '', 2200);
+}
+
+// ── API helpers ──
+async function api(method, path, body) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch('/api' + path, opts);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || res.statusText);
+  return data;
+}
+
+// ── Tabs ──
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ── Date nav ──
+document.getElementById('prevDay').addEventListener('click', () => {
+  currentDate = offsetDate(currentDate, -1);
+  renderToday();
+});
+document.getElementById('nextDay').addEventListener('click', () => {
+  const next = offsetDate(currentDate, 1);
+  if (next <= todayStr()) { currentDate = next; renderToday(); }
+});
+
+// ── TODAY PANEL ──
+async function renderToday() {
+  document.getElementById('dateLabel').textContent = formatDateLabel(currentDate);
+  document.getElementById('nextDay').disabled = currentDate >= todayStr();
+
+  try {
+    const data = await api('GET', `/summary?date=${currentDate}`);
+    allChildren = data.children;
+    const html = data.children.map(child => {
+      const tasksHtml = child.tasks.length === 0
+        ? `<div class="no-tasks">No tasks scheduled</div>`
+        : child.tasks.map(t => `
+          <div class="task-row ${t.completed ? 'done' : ''}" style="--child-color:${escHtml(child.color)}"
+               data-task-id="${t.id}" data-done="${t.completed ? '1' : '0'}">
+            <div class="check-circle">${t.completed ? '✓' : ''}</div>
+            <span class="row-title">${escHtml(t.title)}</span>
+            ${t.recurrence === 'weekly' ? `<span class="row-badge">weekly</span>` : ''}
+            ${t.reward_points > 1 ? `<span class="row-badge">×${t.reward_points}</span>` : ''}
+          </div>`).join('');
+      return `
+        <div class="child-section">
+          <div class="child-section-header" style="--child-color:${escHtml(child.color)}">
+            <span class="emoji">${escHtml(child.avatar_emoji)}</span>
+            <span class="cname">${escHtml(child.name)}</span>
+            <span class="progress-chip">${child.completed}/${child.total}</span>
+          </div>
+          ${tasksHtml}
+        </div>`;
+    }).join('');
+    document.getElementById('todayContent').innerHTML = html || '<p style="color:var(--text-muted);padding:1rem">No children set up yet. Go to the Kids tab to add them.</p>';
+
+    // Attach toggle listeners
+    document.querySelectorAll('.task-row').forEach(row => {
+      row.addEventListener('click', () => toggleCompletion(row));
+    });
+  } catch (e) {
+    showToast('Error loading: ' + e.message, true);
+  }
+}
+
+async function toggleCompletion(row) {
+  const taskId = row.dataset.taskId;
+  const isDone = row.dataset.done === '1';
+  try {
+    if (isDone) {
+      await api('DELETE', `/completions/${taskId}/${currentDate}`);
+    } else {
+      await api('POST', '/completions', { task_id: parseInt(taskId), date: currentDate });
+    }
+    await renderToday();
+  } catch (e) {
+    showToast(e.message, true);
+  }
+}
+
+// ── MANAGE PANEL ──
+async function renderManage() {
+  try {
+    const [children, tasks] = await Promise.all([
+      api('GET', '/children'),
+      api('GET', '/tasks'),
+    ]);
+    allChildren = children;
+    allTasks = tasks;
+
+    const html = children.map(child => {
+      const childTasks = tasks.filter(t => t.child_id === child.id);
+      const tasksHtml = childTasks.map(t => {
+        const meta = t.recurrence === 'weekly'
+          ? `weekly · ${DAYS[t.day_of_week]}`
+          : 'daily';
+        return `
+          <div class="manage-task-item" id="task-item-${t.id}">
+            <div style="flex:1">
+              <div class="item-title">${escHtml(t.title)}</div>
+              <div class="item-meta">${meta}${t.reward_points > 1 ? ` · ×${t.reward_points} pts` : ''}</div>
+            </div>
+            <button class="icon-btn" onclick="openEditForm(${t.id})">✏️</button>
+            <button class="icon-btn danger" onclick="deleteTask(${t.id}, '${escHtml(t.title)}')">🗑️</button>
+          </div>
+          <div class="edit-form" id="edit-form-${t.id}">
+            <div class="form-row">
+              <label>Task name</label>
+              <input type="text" id="edit-title-${t.id}" value="${escHtml(t.title)}">
+            </div>
+            <div class="form-row">
+              <label>Repeat</label>
+              <select id="edit-recur-${t.id}" onchange="toggleDowEdit(${t.id})">
+                <option value="daily" ${t.recurrence==='daily'?'selected':''}>Every day</option>
+                <option value="weekly" ${t.recurrence==='weekly'?'selected':''}>Weekly (specific day)</option>
+              </select>
+            </div>
+            <div class="form-row" id="edit-dow-row-${t.id}" style="${t.recurrence==='weekly'?'':'display:none'}">
+              <label>Day of week</label>
+              <div class="dow-picker">
+                ${DAYS.map((day, i) => `<button type="button" class="dow-btn ${t.day_of_week===i?'selected':''}"
+                  data-dow="${i}" onclick="selectDow(${t.id},${i})">${day}</button>`).join('')}
+              </div>
+            </div>
+            <div class="form-row">
+              <label>Reward points</label>
+              <input type="number" id="edit-pts-${t.id}" value="${t.reward_points}" min="1" max="99">
+            </div>
+            <div class="form-actions">
+              <button class="btn-primary" onclick="saveTask(${t.id})">Save</button>
+              <button class="btn-secondary" onclick="closeEditForm(${t.id})">Cancel</button>
+            </div>
+          </div>`;
+      }).join('');
+
+      return `
+        <div class="child-section">
+          <div class="child-section-header" style="--child-color:${escHtml(child.color)}">
+            <span class="emoji">${escHtml(child.avatar_emoji)}</span>
+            <span class="cname">${escHtml(child.name)}</span>
+          </div>
+          ${tasksHtml || '<div class="no-tasks">No tasks yet</div>'}
+          <button class="btn-add" onclick="openAddForm(${child.id})">+ Add task for ${escHtml(child.name)}</button>
+          <div class="edit-form" id="add-form-${child.id}">
+            <div class="form-row">
+              <label>Task name</label>
+              <input type="text" id="add-title-${child.id}" placeholder="e.g. Make bed">
+            </div>
+            <div class="form-row">
+              <label>Repeat</label>
+              <select id="add-recur-${child.id}" onchange="toggleDowAdd(${child.id})">
+                <option value="daily">Every day</option>
+                <option value="weekly">Weekly (specific day)</option>
+              </select>
+            </div>
+            <div class="form-row" id="add-dow-row-${child.id}" style="display:none">
+              <label>Day of week</label>
+              <div class="dow-picker">
+                ${DAYS.map((day, i) => `<button type="button" class="dow-btn" data-dow="${i}"
+                  onclick="selectDowAdd(${child.id},${i})">${day}</button>`).join('')}
+              </div>
+            </div>
+            <div class="form-row">
+              <label>Reward points</label>
+              <input type="number" id="add-pts-${child.id}" value="1" min="1" max="99">
+            </div>
+            <div class="form-actions">
+              <button class="btn-primary" onclick="addTask(${child.id})">Add Task</button>
+              <button class="btn-secondary" onclick="closeAddForm(${child.id})">Cancel</button>
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+
+    document.getElementById('manageContent').innerHTML = html || '<p style="color:var(--text-muted);padding:1rem">No children set up yet.</p>';
+  } catch (e) {
+    showToast('Error: ' + e.message, true);
+  }
+}
+
+function openEditForm(id) {
+  document.querySelectorAll('.edit-form').forEach(f => f.classList.remove('open'));
+  document.getElementById('edit-form-' + id).classList.add('open');
+}
+function closeEditForm(id) {
+  document.getElementById('edit-form-' + id).classList.remove('open');
+}
+function openAddForm(childId) {
+  document.querySelectorAll('.edit-form').forEach(f => f.classList.remove('open'));
+  document.getElementById('add-form-' + childId).classList.add('open');
+  document.getElementById('add-title-' + childId).focus();
+}
+function closeAddForm(childId) {
+  document.getElementById('add-form-' + childId).classList.remove('open');
+}
+function toggleDowEdit(id) {
+  const v = document.getElementById('edit-recur-' + id).value;
+  document.getElementById('edit-dow-row-' + id).style.display = v === 'weekly' ? '' : 'none';
+}
+function toggleDowAdd(childId) {
+  const v = document.getElementById('add-recur-' + childId).value;
+  document.getElementById('add-dow-row-' + childId).style.display = v === 'weekly' ? '' : 'none';
+}
+function selectDow(taskId, dow) {
+  document.querySelectorAll(`#edit-dow-row-${taskId} .dow-btn`).forEach((b,i) => {
+    b.classList.toggle('selected', i === dow);
+  });
+}
+function selectDowAdd(childId, dow) {
+  document.querySelectorAll(`#add-dow-row-${childId} .dow-btn`).forEach((b,i) => {
+    b.classList.toggle('selected', i === dow);
+  });
+}
+
+async function saveTask(id) {
+  const title = document.getElementById('edit-title-' + id).value.trim();
+  const recurrence = document.getElementById('edit-recur-' + id).value;
+  const pts = parseInt(document.getElementById('edit-pts-' + id).value) || 1;
+  if (!title) return showToast('Task name required', true);
+  let dow = null;
+  if (recurrence === 'weekly') {
+    const sel = document.querySelector(`#edit-dow-row-${id} .dow-btn.selected`);
+    if (!sel) return showToast('Pick a day of the week', true);
+    dow = parseInt(sel.dataset.dow);
+  }
+  try {
+    await api('PATCH', `/tasks/${id}`, { title, recurrence, day_of_week: dow, reward_points: pts });
+    showToast('Saved!');
+    renderManage();
+  } catch (e) { showToast(e.message, true); }
+}
+
+async function addTask(childId) {
+  const title = document.getElementById('add-title-' + childId).value.trim();
+  const recurrence = document.getElementById('add-recur-' + childId).value;
+  const pts = parseInt(document.getElementById('add-pts-' + childId).value) || 1;
+  if (!title) return showToast('Task name required', true);
+  let dow = null;
+  if (recurrence === 'weekly') {
+    const sel = document.querySelector(`#add-dow-row-${childId} .dow-btn.selected`);
+    if (!sel) return showToast('Pick a day of the week', true);
+    dow = parseInt(sel.dataset.dow);
+  }
+  try {
+    await api('POST', '/tasks', { child_id: childId, title, recurrence, day_of_week: dow, reward_points: pts });
+    showToast('Task added!');
+    renderManage();
+  } catch (e) { showToast(e.message, true); }
+}
+
+async function deleteTask(id, title) {
+  if (!confirm(`Delete "${title}"?\n\nHistory will be preserved.`)) return;
+  try {
+    await api('DELETE', `/tasks/${id}`);
+    showToast('Deleted');
+    renderManage();
+  } catch (e) { showToast(e.message, true); }
+}
+
+// ── CHILDREN PANEL ──
+async function renderChildren() {
+  try {
+    const children = await api('GET', '/children');
+    allChildren = children;
+    const cardsHtml = children.map(child => `
+      <div class="child-settings-card" style="--child-color:${escHtml(child.color)}" id="child-card-${child.id}">
+        <h3>${escHtml(child.avatar_emoji)} ${escHtml(child.name)}</h3>
+        <div class="form-row">
+          <label>Name</label>
+          <input type="text" id="child-name-${child.id}" value="${escHtml(child.name)}">
+        </div>
+        <div class="form-row">
+          <label>Avatar emoji</label>
+          <input type="text" id="child-emoji-${child.id}" value="${escHtml(child.avatar_emoji)}" maxlength="4" style="font-size:1.5rem">
+        </div>
+        <div class="form-row">
+          <label>Color</label>
+          <div class="color-input-row">
+            <input type="color" id="child-color-${child.id}" value="${escHtml(child.color)}">
+            <input type="text" id="child-color-hex-${child.id}" value="${escHtml(child.color)}"
+              oninput="syncColorPicker(${child.id})" placeholder="#4f46e5" style="flex:1">
+          </div>
+        </div>
+        <button class="save-child-btn" onclick="saveChild(${child.id})">Save Changes</button>
+      </div>`).join('');
+
+    document.getElementById('childrenContent').innerHTML = `
+      ${cardsHtml}
+      <div class="add-child-section">
+        <h3>Add a child</h3>
+        <div class="form-row"><label>Name</label><input type="text" id="new-child-name" placeholder="e.g. Emma"></div>
+        <div class="form-row"><label>Avatar emoji</label><input type="text" id="new-child-emoji" value="⭐" maxlength="4" style="font-size:1.5rem"></div>
+        <div class="form-row">
+          <label>Color</label>
+          <div class="color-input-row">
+            <input type="color" id="new-child-color" value="#4f46e5">
+            <input type="text" id="new-child-color-hex" value="#4f46e5" placeholder="#4f46e5" style="flex:1">
+          </div>
+        </div>
+        <button class="btn-primary" style="width:100%;padding:0.75rem;margin-top:0.5rem" onclick="addChild()">Add Child</button>
+      </div>`;
+
+    // Sync color pickers ↔ text inputs
+    children.forEach(child => {
+      const picker = document.getElementById(`child-color-${child.id}`);
+      const hex = document.getElementById(`child-color-hex-${child.id}`);
+      if (picker) picker.addEventListener('input', () => hex.value = picker.value);
+    });
+    const newPicker = document.getElementById('new-child-color');
+    const newHex = document.getElementById('new-child-color-hex');
+    if (newPicker) newPicker.addEventListener('input', () => newHex.value = newPicker.value);
+  } catch (e) {
+    showToast('Error: ' + e.message, true);
+  }
+}
+
+function syncColorPicker(id) {
+  const hex = document.getElementById(`child-color-hex-${id}`).value;
+  if (/^#[0-9a-fA-F]{6}$/.test(hex)) {
+    document.getElementById(`child-color-${id}`).value = hex;
+  }
+}
+
+async function saveChild(id) {
+  const name = document.getElementById(`child-name-${id}`).value.trim();
+  const emoji = document.getElementById(`child-emoji-${id}`).value.trim() || '⭐';
+  const color = document.getElementById(`child-color-hex-${id}`).value.trim() || '#4f46e5';
+  if (!name) return showToast('Name required', true);
+  try {
+    await api('PATCH', `/children/${id}`, { name, avatar_emoji: emoji, color });
+    showToast('Saved!');
+    renderChildren();
+  } catch (e) { showToast(e.message, true); }
+}
+
+async function addChild() {
+  const name = document.getElementById('new-child-name').value.trim();
+  const emoji = document.getElementById('new-child-emoji').value.trim() || '⭐';
+  const color = document.getElementById('new-child-color-hex').value.trim() || '#4f46e5';
+  if (!name) return showToast('Name required', true);
+  try {
+    await api('POST', '/children', { name, avatar_emoji: emoji, color });
+    showToast(`${name} added!`);
+    renderChildren();
+    renderManage();
+  } catch (e) { showToast(e.message, true); }
+}
+
+// ── Init ──
+renderToday();
+renderManage();
+renderChildren();
+</script>
+</body>
+</html>

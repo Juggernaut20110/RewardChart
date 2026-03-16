@@ -1,0 +1,13 @@
+services:
+  rewardchart:
+    image: rewardchart
+    build: .
+    container_name: rewardchart
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - rewardchart-data:/app/data
+
+volumes:
+  rewardchart-data:

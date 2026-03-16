@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chore Chart</title>
+  <link rel="stylesheet" href="css/shared.css">
+  <link rel="stylesheet" href="css/display.css">
+</head>
+<body>
+  <div id="app">
+    <div class="loading" style="grid-column:1/-1;display:flex;align-items:center;justify-content:center;font-size:2rem;color:var(--text-muted);">
+      Loading...
+    </div>
+  </div>
+
+  <script>
+    const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+    function formatDate(dateStr) {
+      const [y, m, d] = dateStr.split('-').map(Number);
+      const dt = new Date(y, m - 1, d);
+      return `${DAYS[dt.getDay()]}, ${dt.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`;
+    }
+
+    function renderChild(child) {
+      const pct = child.total > 0 ? Math.round((child.completed / child.total) * 100) : 0;
+      const allDone = child.total > 0 && child.completed === child.total;
+
+      const tasksHtml = child.tasks.length === 0
+        ? `<div class="empty-state"><span style="font-size:3rem">📋</span><p>No tasks today!</p></div>`
+        : child.tasks.map(t => `
+            <div class="task-card ${t.completed ? 'done' : ''}">
+              <div class="task-check">${t.completed ? '✓' : ''}</div>
+              <span class="task-title">${escHtml(t.title)}</span>
+              ${t.recurrence === 'weekly' ? `<span class="task-badge">weekly</span>` : ''}
+              ${t.reward_points > 1 ? `<span class="task-badge">×${t.reward_points}</span>` : ''}
+            </div>`).join('');
+
+      return `
+        <div class="child-col" style="--child-color:${escHtml(child.color)}">
+          <div class="child-header">
+            <span class="child-avatar">${escHtml(child.avatar_emoji)}</span>
+            <span class="child-name">${escHtml(child.name)}</span>
+          </div>
+          <div class="progress-wrap">
+            <div class="progress-label">
+              <span class="progress-fraction">${child.completed} / ${child.total} done</span>
+              <span class="progress-pct">${pct}%</span>
+            </div>
+            <div class="progress-bar-bg">
+              <div class="progress-bar-fill" style="width:${pct}%"></div>
+            </div>
+          </div>
+          ${allDone ? `<div class="all-done"><span class="trophy">🏆</span><p>Amazing job!</p></div>` : ''}
+          <div class="task-list">${tasksHtml}</div>
+          <div id="clock"></div>
+        </div>`;
+    }
+
+    function escHtml(str) {
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    async function refresh() {
+      try {
+        const res = await fetch('/api/summary?date=today');
+        if (!res.ok) throw new Error(res.statusText);
+        const data = await res.json();
+        const app = document.getElementById('app');
+        if (data.children.length === 0) {
+          app.innerHTML = `<div style="grid-column:1/-1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem;color:var(--text-muted);">
+            <span style="font-size:5rem">👋</span>
+            <p style="font-size:2rem;font-weight:700">Set up your chart!</p>
+            <p>Open <strong style="color:#6366f1">admin.html</strong> on your phone to add kids and tasks.</p>
+          </div>`;
+          return;
+        }
+        app.innerHTML = data.children.map(renderChild).join('');
+        // Update clocks
+        document.querySelectorAll('#clock').forEach(el => {
+          el.textContent = formatDate(data.date);
+        });
+      } catch (e) {
+        console.error('Refresh error:', e);
+      }
+    }
+
+    refresh();
+    setInterval(refresh, 30_000);
+
+    // Live clock ticks every minute
+    function tickClock() {
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      document.querySelectorAll('#clock').forEach(el => {
+        const dateStr = el.textContent.split(' · ')[0];
+        el.textContent = `${dateStr} · ${timeStr}`;
+      });
+    }
+    setInterval(tickClock, 10_000);
+    setTimeout(tickClock, 500);
+  </script>
+</body>
+</html>

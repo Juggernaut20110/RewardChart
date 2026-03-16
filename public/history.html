@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chore Chart — History</title>
+  <link rel="stylesheet" href="css/shared.css">
+  <link rel="stylesheet" href="css/history.css">
+</head>
+<body>
+
+<div class="topbar">
+  <h1>📅 History</h1>
+  <div style="display:flex;gap:0.5rem">
+    <a href="display.html">📺 Display</a>
+    <a href="admin.html">⚙️ Admin</a>
+  </div>
+</div>
+
+<div class="controls">
+  <select id="childSelect"><option value="">Loading…</option></select>
+  <select id="daysSelect">
+    <option value="7">Last 7 days</option>
+    <option value="14">Last 14 days</option>
+    <option value="30" selected>Last 30 days</option>
+    <option value="90">Last 90 days</option>
+  </select>
+</div>
+
+<div id="stripWrap"></div>
+<div class="history-container" id="historyContent">
+  <div class="empty">Loading…</div>
+</div>
+
+<script>
+const DAYS_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+function escHtml(str) {
+  return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function formatDate(dateStr) {
+  const today = new Date().toLocaleDateString('en-CA');
+  const yesterday = (() => { const d = new Date(); d.setDate(d.getDate()-1); return d.toLocaleDateString('en-CA'); })();
+  if (dateStr === today) return 'Today';
+  if (dateStr === yesterday) return 'Yesterday';
+  const [y,m,d] = dateStr.split('-').map(Number);
+  const dt = new Date(y, m-1, d);
+  return `${DAYS_SHORT[dt.getDay()]} ${dt.toLocaleDateString('en-US',{month:'short',day:'numeric'})}`;
+}
+function shortDate(dateStr) {
+  const [y,m,d] = dateStr.split('-').map(Number);
+  const dt = new Date(y, m-1, d);
+  return `${DAYS_SHORT[dt.getDay()]}\n${m}/${d}`;
+}
+
+async function api(path) {
+  const res = await fetch('/api' + path);
+  if (!res.ok) throw new Error(res.statusText);
+  return res.json();
+}
+
+let selectedChild = null;
+let children = [];
+
+async function init() {
+  children = await api('/children');
+  const sel = document.getElementById('childSelect');
+  if (children.length === 0) {
+    sel.innerHTML = '<option>No children set up</option>';
+    document.getElementById('historyContent').innerHTML = '<div class="empty">No children set up yet.</div>';
+    return;
+  }
+  sel.innerHTML = children.map(c => `<option value="${c.id}">${escHtml(c.avatar_emoji)} ${escHtml(c.name)}</option>`).join('');
+  selectedChild = children[0];
+  load();
+}
+
+document.getElementById('childSelect').addEventListener('change', e => {
+  selectedChild = children.find(c => c.id == e.target.value);
+  load();
+});
+document.getElementById('daysSelect').addEventListener('change', load);
+
+async function load() {
+  if (!selectedChild) return;
+  const days = document.getElementById('daysSelect').value;
+  document.getElementById('historyContent').innerHTML = '<div class="empty">Loading…</div>';
+  document.getElementById('stripWrap').innerHTML = '';
+  try {
+    const history = await api(`/summary/history?child_id=${selectedChild.id}&days=${days}`);
+    renderStrip(history);
+    renderCards(history);
+  } catch (e) {
+    document.getElementById('historyContent').innerHTML = `<div class="empty">Error: ${escHtml(e.message)}</div>`;
+  }
+}
+
+function renderStrip(history) {
+  const color = selectedChild.color;
+  const items = [...history].reverse(); // oldest first
+  const html = items.map(day => {
+    const pct = day.total > 0 ? Math.round((day.completed / day.total) * 100) : 0;
+    const [y,m,d] = day.date.split('-').map(Number);
+    const dt = new Date(y, m-1, d);
+    const label = `${DAYS_SHORT[dt.getDay()]} ${m}/${d}`;
+    return `
+      <div class="summary-day">
+        <div class="summary-circle" style="--child-color:${escHtml(color)};--pct:${pct}">
+          <div class="summary-circle-inner">
+            <span style="font-size:0.6rem;font-weight:700;color:${escHtml(color)}">${pct}%</span>
+          </div>
+        </div>
+        <span class="summary-day-label">${escHtml(label)}</span>
+      </div>`;
+  }).join('');
+  document.getElementById('stripWrap').innerHTML = `<div class="summary-strip">${html}</div>`;
+}
+
+function renderCards(history) {
+  if (history.length === 0) {
+    document.getElementById('historyContent').innerHTML = '<div class="empty">No history yet.</div>';
+    return;
+  }
+  const color = selectedChild.color;
+  const html = history.map(day => {
+    const pct = day.total > 0 ? Math.round((day.completed / day.total) * 100) : 0;
+    const tasksHtml = day.tasks.length === 0
+      ? '<div style="color:var(--text-muted);font-size:0.85rem">No tasks scheduled</div>'
+      : day.tasks.map(t => `
+          <div class="hist-task-row">
+            <div class="hist-dot ${t.completed ? 'done' : ''}"></div>
+            <span class="hist-task-title ${t.completed ? 'done' : ''}">${escHtml(t.title)}</span>
+            ${t.reward_points > 1 ? `<span style="font-size:0.75rem;color:var(--text-muted)">×${t.reward_points}</span>` : ''}
+          </div>`).join('');
+    return `
+      <div class="day-card" style="--child-color:${escHtml(color)}" onclick="this.classList.toggle('expanded')">
+        <div class="day-card-header">
+          <span class="day-date">${escHtml(formatDate(day.date))}</span>
+          <span class="day-score">${day.completed}/${day.total} · ${pct}%${day.points > 0 ? ` · ⭐${day.points}` : ''}</span>
+        </div>
+        <div class="day-progress-bar">
+          <div class="day-progress-fill" style="width:${pct}%"></div>
+        </div>
+        <div class="day-tasks">${tasksHtml}</div>
+      </div>`;
+  }).join('');
+  document.getElementById('historyContent').innerHTML = html;
+}
+
+init();
+</script>
+</body>
+</html>

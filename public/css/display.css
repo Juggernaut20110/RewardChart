@@ -1,0 +1,183 @@
+body {
+  overflow: hidden;
+  height: 100vh;
+}
+
+#app {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  height: 100vh;
+  gap: 0;
+}
+
+/* ── Per-child column ── */
+.child-col {
+  display: flex;
+  flex-direction: column;
+  padding: 2rem 2.5rem;
+  border-right: 2px solid rgba(255,255,255,0.05);
+  overflow: hidden;
+  --child-color: #6366f1;
+}
+.child-col:last-child { border-right: none; }
+
+/* ── Header ── */
+.child-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-shrink: 0;
+}
+.child-avatar {
+  font-size: 3.5rem;
+  line-height: 1;
+}
+.child-name {
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  font-weight: 800;
+  color: var(--child-color);
+  letter-spacing: -0.02em;
+  text-shadow: 0 0 40px color-mix(in srgb, var(--child-color) 40%, transparent);
+}
+
+/* ── Progress bar ── */
+.progress-wrap {
+  flex-shrink: 0;
+  margin-bottom: 1.5rem;
+}
+.progress-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 0.5rem;
+}
+.progress-fraction {
+  font-size: clamp(1.2rem, 2.5vw, 2rem);
+  font-weight: 700;
+  color: var(--child-color);
+}
+.progress-pct {
+  font-size: 1rem;
+  color: var(--text-muted);
+}
+.progress-bar-bg {
+  height: 18px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.progress-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--child-color);
+  transition: width 0.6s cubic-bezier(.34,1.56,.64,1);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--child-color) 60%, transparent);
+}
+
+/* ── All done message ── */
+.all-done {
+  text-align: center;
+  padding: 2rem 0;
+  animation: pop 0.4s cubic-bezier(.34,1.56,.64,1) both;
+}
+.all-done .trophy { font-size: 5rem; display: block; margin-bottom: 0.5rem; }
+.all-done p { font-size: 1.8rem; font-weight: 700; color: var(--child-color); }
+
+/* ── Task list ── */
+.task-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding-right: 0.5rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--child-color) transparent;
+}
+
+.task-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 2px solid rgba(255,255,255,0.06);
+  transition: all 0.35s ease;
+  animation: slideIn 0.3s ease both;
+}
+.task-card.done {
+  background: color-mix(in srgb, var(--child-color) 12%, var(--surface));
+  border-color: color-mix(in srgb, var(--child-color) 30%, transparent);
+  opacity: 0.75;
+}
+
+.task-check {
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  border: 3px solid rgba(255,255,255,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  transition: all 0.3s ease;
+  background: transparent;
+}
+.task-card.done .task-check {
+  background: var(--child-color);
+  border-color: var(--child-color);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--child-color) 50%, transparent);
+}
+
+.task-title {
+  font-size: clamp(1rem, 1.8vw, 1.4rem);
+  font-weight: 600;
+  flex: 1;
+  transition: all 0.3s ease;
+}
+.task-card.done .task-title {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+.task-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.08);
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* ── Date/time footer ── */
+#clock {
+  flex-shrink: 0;
+  text-align: center;
+  padding-top: 1rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+/* ── Animations ── */
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes pop {
+  from { opacity: 0; transform: scale(0.6); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* ── Empty state ── */
+.empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--text-muted);
+}
+.empty-state p { font-size: 1.1rem; margin-top: 0.5rem; }

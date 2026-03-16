@@ -1,0 +1,324 @@
+body {
+  max-width: 600px;
+  margin: 0 auto;
+  padding-bottom: 5rem;
+}
+
+/* ── Top bar ── */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--bg);
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.topbar h1 {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+.topbar-actions { display: flex; gap: 0.5rem; }
+
+/* ── Tabs ── */
+.tabs {
+  display: flex;
+  gap: 0;
+  background: var(--surface);
+  border-radius: var(--radius);
+  margin: 1rem;
+  padding: 4px;
+}
+.tab-btn {
+  flex: 1;
+  padding: 0.6rem;
+  background: none;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+  border-radius: calc(var(--radius) - 4px);
+  transition: background 0.2s, color 0.2s;
+}
+.tab-btn.active {
+  background: #6366f1;
+  color: #fff;
+}
+
+/* ── Panels ── */
+.panel { display: none; padding: 0 1rem; }
+.panel.active { display: block; }
+
+/* ── Date nav ── */
+.date-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+}
+.date-nav button {
+  background: rgba(255,255,255,0.08);
+  color: var(--text);
+  padding: 0.4rem 0.9rem;
+  font-size: 1.2rem;
+}
+.date-label { font-weight: 700; font-size: 1rem; }
+
+/* ── Child sections ── */
+.child-section {
+  margin-bottom: 1.5rem;
+}
+.child-section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0;
+  border-bottom: 2px solid var(--child-color, #6366f1);
+}
+.child-section-header .emoji { font-size: 1.5rem; }
+.child-section-header .cname {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--child-color, #6366f1);
+}
+.child-section-header .progress-chip {
+  margin-left: auto;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  background: rgba(255,255,255,0.06);
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+/* ── Task rows (today panel) ── */
+.task-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.9rem 1rem;
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+  margin-bottom: 0.5rem;
+  cursor: pointer;
+  transition: background 0.15s;
+  border: 2px solid transparent;
+  min-height: 60px;
+}
+.task-row:active { transform: scale(0.98); }
+.task-row.done {
+  background: color-mix(in srgb, var(--child-color, #6366f1) 15%, var(--surface));
+  border-color: color-mix(in srgb, var(--child-color, #6366f1) 30%, transparent);
+}
+.task-row .check-circle {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2.5px solid rgba(255,255,255,0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  transition: all 0.25s;
+}
+.task-row.done .check-circle {
+  background: var(--child-color, #6366f1);
+  border-color: var(--child-color, #6366f1);
+}
+.task-row .row-title {
+  flex: 1;
+  font-size: 1rem;
+  font-weight: 500;
+}
+.task-row.done .row-title {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+.task-row .row-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  background: rgba(255,255,255,0.06);
+  padding: 2px 7px;
+  border-radius: 999px;
+}
+
+.no-tasks {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 1.5rem;
+  font-size: 0.9rem;
+}
+
+/* ── Manage tasks panel ── */
+.manage-task-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+  margin-bottom: 0.5rem;
+}
+.manage-task-item .item-title {
+  flex: 1;
+  font-size: 0.95rem;
+}
+.manage-task-item .item-meta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+.icon-btn {
+  background: rgba(255,255,255,0.06);
+  color: var(--text);
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+.icon-btn.danger:hover { background: rgba(239,68,68,0.25); }
+
+/* ── Inline edit form ── */
+.edit-form {
+  background: var(--surface2);
+  border: 1px solid #333355;
+  border-radius: var(--radius-sm);
+  padding: 1rem;
+  margin-bottom: 0.5rem;
+  display: none;
+}
+.edit-form.open { display: block; }
+.form-row { margin-bottom: 0.75rem; }
+.form-row:last-child { margin-bottom: 0; }
+.form-actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
+.btn-primary {
+  background: #6366f1;
+  color: #fff;
+  padding: 0.6rem 1.2rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  flex: 1;
+}
+.btn-secondary {
+  background: rgba(255,255,255,0.08);
+  color: var(--text);
+  padding: 0.6rem 1.2rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.btn-add {
+  width: 100%;
+  background: rgba(99,102,241,0.15);
+  color: #818cf8;
+  border: 2px dashed rgba(99,102,241,0.4);
+  padding: 0.75rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  margin-top: 0.5rem;
+}
+.btn-add:hover { background: rgba(99,102,241,0.25); }
+
+/* ── Children settings panel ── */
+.child-settings-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border-left: 4px solid var(--child-color, #6366f1);
+}
+.child-settings-card h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--child-color, #6366f1);
+  margin-bottom: 0.75rem;
+}
+.color-input-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.color-input-row input[type="color"] {
+  width: 48px;
+  height: 38px;
+  padding: 2px;
+  cursor: pointer;
+  flex-shrink: 0;
+  background: var(--surface2);
+}
+.save-child-btn {
+  margin-top: 0.75rem;
+  width: 100%;
+  background: var(--child-color, #6366f1);
+  color: #fff;
+  padding: 0.6rem;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+}
+
+/* ── Add child form ── */
+.add-child-section {
+  margin-top: 2rem;
+  border-top: 1px solid rgba(255,255,255,0.07);
+  padding-top: 1.5rem;
+}
+.add-child-section h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ── Days of week selector ── */
+.dow-picker {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.dow-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.dow-btn.selected {
+  background: #6366f1;
+  color: #fff;
+}
+
+/* ── Toast ── */
+#toast {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: #22c55e;
+  color: #fff;
+  padding: 0.6rem 1.5rem;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: transform 0.3s cubic-bezier(.34,1.56,.64,1);
+  z-index: 999;
+  white-space: nowrap;
+  pointer-events: none;
+}
+#toast.show { transform: translateX(-50%) translateY(0); }
+#toast.error { background: #ef4444; }
