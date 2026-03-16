@@ -1,6 +1,5 @@
 services:
   rewardchart:
-    image: rewardchart
     build: .
     container_name: rewardchart
     restart: unless-stopped
